@@ -33,11 +33,14 @@ type Stream struct {
 
 }
 
-// MediaInfo is the parsed result of inspecting a media file.
+// MediaInfo is the parsed result of inspecting a media file. Error is
+// populated instead of Container/Streams when GStreamer could not
+// inspect the file — callers should check Error first.
 type MediaInfo struct {
 	Container       string   `json:"container"`
 	DurationSeconds float64  `json:"duration_seconds"`
 	Streams         []Stream `json:"streams"`
+	Error           string   `json:"error,omitempty"`
 }
 
 // Inspect opens filepath with GStreamer (via cgo) and returns a parsed
@@ -61,6 +64,9 @@ func Inspect(filepath string) (*MediaInfo, error) {
 	var info MediaInfo
 	if err := json.Unmarshal([]byte(goJSON), &info); err != nil {
 		return nil, fmt.Errorf("inspector: parsing result for %s: %w", filepath, err)
+	}
+	if info.Error != "" {
+		return nil, fmt.Errorf("%w: %s: %s", ErrInspectFailed, filepath, info.Error)
 	}
 	return &info, nil
 }

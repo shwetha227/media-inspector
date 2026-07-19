@@ -44,6 +44,25 @@ static void sb_appendf(strbuf *sb, const char *fmt, ...) {
     sb_append(sb, tmp);
 }
 
+/* Builds a {"error":"..."} JSON object from a plain-text message,
+ * escaping quotes and backslashes so the result stays valid JSON. */
+static char *build_error_json(const char *message) {
+    strbuf sb;
+    sb_init(&sb);
+    sb_append(&sb, "{\"error\":\"");
+
+    for (const char *p = message; *p != '\0'; p++) {
+        if (*p == '"' || *p == '\\') {
+            sb_append(&sb, "\\");
+        }
+        char one[2] = {*p, '\0'};
+        sb_append(&sb, one);
+    }
+
+    sb_append(&sb, "\"}");
+    return sb.data;
+}
+
 static void append_stream_json(strbuf *sb, GstDiscovererStreamInfo *stream, gboolean *first) {
     GstCaps *caps = gst_discoverer_stream_info_get_caps(stream);
     if (caps == NULL) {
@@ -137,15 +156,17 @@ char *inspect_media(const char *filepath) {
     gchar *uri = gst_filename_to_uri(abs_path, &err);
     g_free(abs_path);
     if (uri == NULL) {
+        char *result = build_error_json(err ? err->message : "invalid file path");
         if (err) g_error_free(err);
-        return NULL;
+        return result;
     }
 
     GstDiscoverer *discoverer = gst_discoverer_new(10 * GST_SECOND, &err);
     if (discoverer == NULL) {
         g_free(uri);
+        char *result = build_error_json(err ? err->message : "could not create discoverer");
         if (err) g_error_free(err);
-        return NULL;
+        return result;
     }
     if (err) { g_error_free(err); err = NULL; }
 
@@ -156,10 +177,12 @@ char *inspect_media(const char *filepath) {
         info != NULL ? gst_discoverer_info_get_result(info) : GST_DISCOVERER_ERROR;
 
     if (info == NULL || result != GST_DISCOVERER_OK) {
+        const char *message = (err != NULL) ? err->message : "GStreamer could not inspect this file";
+        char *result_json = build_error_json(message);
         if (info != NULL) gst_discoverer_info_unref(info);
         if (err != NULL) g_error_free(err);
         g_object_unref(discoverer);
-        return NULL;
+        return result_json;
     }
 
     strbuf sb;
