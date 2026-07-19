@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package inspector;
+
+option go_package = "media-inspector/proto/inspectorpb";
+
+service MediaInspector {
+  rpc Inspect(InspectRequest) returns (InspectResponse);
+}
+
+message InspectRequest {
+  string file_path = 1;
+}
+
+message Stream {
+  string type = 1;
+  string codec = 2;
+  uint32 width = 3;
+  uint32 height = 4;
+  string fps = 5;
+  uint32 channels = 6;
+  uint32 sample_rate = 7;
+}
+
+message InspectResponse {
+  string container = 1;
+  double duration_seconds = 2;
+  repeated Stream streams = 3;
+}
