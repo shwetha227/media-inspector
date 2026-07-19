@@ -3,8 +3,10 @@ package inspector
 
 /*
 #cgo pkg-config: gstreamer-1.0 gstreamer-pbutils-1.0
+#cgo CFLAGS: -I${SRCDIR}/../../c
 #include <stdlib.h>
-#include "../../c/inspector.h"
+#include "inspector.h"
+#include "inspector.c"
 */
 import "C"
 
