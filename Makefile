@@ -1,12 +1,12 @@
 .PHONY: build build-local run test test-grpc client
 
 build:
-	docker build --target runtime -t media-inspector-runtime-test .
+	docker build -t media-inspector:latest .
 
 run:
 	docker run --rm -p 50051:50051 \
 		-v $(shell pwd)/testdata:/testdata \
-		media-inspector-runtime-test
+		media-inspector:latest
 
 test:
 	go test -race ./...
