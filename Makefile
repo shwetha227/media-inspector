@@ -7,6 +7,9 @@ run:
 		media-inspector-runtime-test
 
 test:
+	go test -race ./...
+
+test-grpc:
 	grpcurl -plaintext \
 		-proto proto/inspector.proto \
 		-import-path proto \
