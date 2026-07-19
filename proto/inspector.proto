@@ -20,6 +20,8 @@ message Stream {
   string fps = 5;
   uint32 channels = 6;
   uint32 sample_rate = 7;
+    uint32 bitrate = 8;
+
 }
 
 message InspectResponse {

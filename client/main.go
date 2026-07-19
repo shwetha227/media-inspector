@@ -56,6 +56,9 @@ func main() {
 		if s.GetSampleRate() > 0 {
 			fmt.Printf(" sampleRate=%d", s.GetSampleRate())
 		}
+		if s.GetBitrate() > 0 {
+			fmt.Printf(" bitrate=%d", s.GetBitrate())
+		}
 		fmt.Println()
 	}
 }

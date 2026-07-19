@@ -74,6 +74,7 @@ type Stream struct {
 	Fps           string                 `protobuf:"bytes,5,opt,name=fps,proto3" json:"fps,omitempty"`
 	Channels      uint32                 `protobuf:"varint,6,opt,name=channels,proto3" json:"channels,omitempty"`
 	SampleRate    uint32                 `protobuf:"varint,7,opt,name=sample_rate,json=sampleRate,proto3" json:"sample_rate,omitempty"`
+	Bitrate       uint32                 `protobuf:"varint,8,opt,name=bitrate,proto3" json:"bitrate,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -157,6 +158,13 @@ func (x *Stream) GetSampleRate() uint32 {
 	return 0
 }
 
+func (x *Stream) GetBitrate() uint32 {
+	if x != nil {
+		return x.Bitrate
+	}
+	return 0
+}
+
 type InspectResponse struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Container       string                 `protobuf:"bytes,1,opt,name=container,proto3" json:"container,omitempty"`
@@ -223,7 +231,7 @@ const file_inspector_proto_rawDesc = "" +
 	"\n" +
 	"\x0finspector.proto\x12\tinspector\"-\n" +
 	"\x0eInspectRequest\x12\x1b\n" +
-	"\tfile_path\x18\x01 \x01(\tR\bfilePath\"\xaf\x01\n" +
+	"\tfile_path\x18\x01 \x01(\tR\bfilePath\"\xc9\x01\n" +
 	"\x06Stream\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x14\n" +
 	"\x05codec\x18\x02 \x01(\tR\x05codec\x12\x14\n" +
@@ -232,7 +240,8 @@ const file_inspector_proto_rawDesc = "" +
 	"\x03fps\x18\x05 \x01(\tR\x03fps\x12\x1a\n" +
 	"\bchannels\x18\x06 \x01(\rR\bchannels\x12\x1f\n" +
 	"\vsample_rate\x18\a \x01(\rR\n" +
-	"sampleRate\"\x87\x01\n" +
+	"sampleRate\x12\x18\n" +
+	"\abitrate\x18\b \x01(\rR\abitrate\"\x87\x01\n" +
 	"\x0fInspectResponse\x12\x1c\n" +
 	"\tcontainer\x18\x01 \x01(\tR\tcontainer\x12)\n" +
 	"\x10duration_seconds\x18\x02 \x01(\x01R\x0fdurationSeconds\x12+\n" +

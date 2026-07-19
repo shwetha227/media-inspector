@@ -56,6 +56,8 @@ func (s *mediaInspectorServer) Inspect(ctx context.Context, req *pb.InspectReque
 			Fps:        s.FPS,
 			Channels:   s.Channels,
 			SampleRate: s.SampleRate,
+						Bitrate:    s.Bitrate,
+
 		})
 	}
 	return resp, nil
