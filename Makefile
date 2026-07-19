@@ -1,3 +1,5 @@
+.PHONY: build build-local run test test-grpc client
+
 build:
 	docker build --target runtime -t media-inspector-runtime-test .
 
@@ -18,3 +20,6 @@ test-grpc:
 
 build-local:
 	CGO_ENABLED=1 go build -o bin/media-inspector-server ./server
+
+client:
+	go run client/main.go $(FILE)
