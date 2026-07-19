@@ -69,19 +69,27 @@ static void append_stream_json(strbuf *sb, GstDiscovererStreamInfo *stream, gboo
         guint height = gst_discoverer_video_info_get_height(vinfo);
         guint fps_n = gst_discoverer_video_info_get_framerate_num(vinfo);
         guint fps_d = gst_discoverer_video_info_get_framerate_denom(vinfo);
+        guint bitrate = gst_discoverer_video_info_get_bitrate(vinfo);
 
         sb_append(sb, ",\"type\":\"video\"");
         sb_appendf(sb, ",\"width\":%u,\"height\":%u", width, height);
         if (fps_d > 0) {
             sb_appendf(sb, ",\"fps\":\"%u/%u\"", fps_n, fps_d);
         }
+        if (bitrate > 0) {
+            sb_appendf(sb, ",\"bitrate\":%u", bitrate);
+        }
     } else if (GST_IS_DISCOVERER_AUDIO_INFO(stream)) {
         GstDiscovererAudioInfo *ainfo = GST_DISCOVERER_AUDIO_INFO(stream);
         guint channels = gst_discoverer_audio_info_get_channels(ainfo);
         guint sample_rate = gst_discoverer_audio_info_get_sample_rate(ainfo);
+        guint bitrate = gst_discoverer_audio_info_get_bitrate(ainfo);
 
         sb_append(sb, ",\"type\":\"audio\"");
         sb_appendf(sb, ",\"channels\":%u,\"sample_rate\":%u", channels, sample_rate);
+        if (bitrate > 0) {
+            sb_appendf(sb, ",\"bitrate\":%u", bitrate);
+        }
     } else {
         sb_append(sb, ",\"type\":\"unknown\"");
     }
