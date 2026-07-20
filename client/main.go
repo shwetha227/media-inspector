@@ -37,28 +37,65 @@ func main() {
 	if err != nil {
 		log.Fatalf("Inspect failed: %v", err)
 	}
+fmt.Printf("%-15s: %s\n", "Container", resp.GetContainer())
+	fmt.Printf("%-15s: %.3f seconds\n", "Duration", resp.GetDurationSeconds())
 
-	fmt.Printf("File:       %s\n", filePath)
-	fmt.Printf("Container:  %s\n", resp.GetContainer())
-	fmt.Printf("Duration:   %.2fs\n", resp.GetDurationSeconds())
-	fmt.Printf("Streams:\n")
-	for i, s := range resp.GetStreams() {
-		fmt.Printf("  [%d] type=%s codec=%s", i, s.GetType(), s.GetCodec())
-		if s.GetWidth() > 0 || s.GetHeight() > 0 {
-			fmt.Printf(" resolution=%dx%d", s.GetWidth(), s.GetHeight())
+	for _, s := range resp.GetStreams() {
+		switch s.GetType() {
+		case "video":
+			fmt.Printf("%-15s: %s\n", "Video Codec", codecLabel(s.GetCodec()))
+			if s.GetWidth() > 0 || s.GetHeight() > 0 {
+				fmt.Printf("%-15s: %d x %d\n", "Resolution", s.GetWidth(), s.GetHeight())
+			}
+			if s.GetFps() != "" {
+				fmt.Printf("%-15s: %s\n", "FPS", fpsLabel(s.GetFps()))
+			}
+			if s.GetBitrate() > 0 {
+				fmt.Printf("%-15s: %d bps\n", "Video Bitrate", s.GetBitrate())
+			}
+		case "audio":
+			fmt.Printf("%-15s: %s\n", "Audio Codec", codecLabel(s.GetCodec()))
+			if s.GetChannels() > 0 {
+				fmt.Printf("%-15s: %d\n", "Channels", s.GetChannels())
+			}
+			if s.GetSampleRate() > 0 {
+				fmt.Printf("%-15s: %d Hz\n", "Sample Rate", s.GetSampleRate())
+			}
+			if s.GetBitrate() > 0 {
+				fmt.Printf("%-15s: %d bps\n", "Audio Bitrate", s.GetBitrate())
+			}
+		default:
+			fmt.Printf("%-15s: %s (%s)\n", "Stream", s.GetType(), s.GetCodec())
 		}
-		if s.GetFps() != "" {
-			fmt.Printf(" fps=%s", s.GetFps())
-		}
-		if s.GetChannels() > 0 {
-			fmt.Printf(" channels=%d", s.GetChannels())
-		}
-		if s.GetSampleRate() > 0 {
-			fmt.Printf(" sampleRate=%d", s.GetSampleRate())
-		}
-		if s.GetBitrate() > 0 {
-			fmt.Printf(" bitrate=%d", s.GetBitrate())
-		}
-		fmt.Println()
 	}
+}
+
+// codecLabel turns a raw GStreamer media-type string (e.g.
+// "video/x-h264") into a short human-readable label ("H.264"),
+// falling back to the raw string for anything not in the table.
+func codecLabel(mediaType string) string {
+	labels := map[string]string{
+		"video/x-h264": "H.264",
+		"video/x-h265": "H.265",
+		"video/x-vp8":  "VP8",
+		"video/x-vp9":  "VP9",
+		"audio/mpeg":   "AAC/MP3",
+		"audio/x-opus": "Opus",
+		"audio/x-flac": "FLAC",
+	}
+	if label, ok := labels[mediaType]; ok {
+		return label
+	}
+	return mediaType
+}
+
+// fpsLabel converts a "30/1"-style fraction into a plain number when
+// the denominator is 1, and leaves genuine fractions (like "24000/1001")
+// as-is, since collapsing those would lose precision.
+func fpsLabel(fps string) string {
+	var n, d int
+	if _, err := fmt.Sscanf(fps, "%d/%d", &n, &d); err == nil && d == 1 {
+		return fmt.Sprintf("%d", n)
+	}
+	return fps
 }
