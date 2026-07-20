@@ -1,6 +1,5 @@
 // Package inspector wraps the C GStreamer-backed media inspector via cgo.
 package inspector
-
 /*
 #cgo pkg-config: gstreamer-1.0 gstreamer-pbutils-1.0
 #cgo CFLAGS: -I${SRCDIR}/../../c

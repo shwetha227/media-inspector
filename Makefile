@@ -1,4 +1,4 @@
-.PHONY: build build-local run test test-grpc client
+.PHONY: build build-client build-local run test test-grpc client
 
 build:
 	docker build -t media-inspector:latest .
@@ -26,6 +26,3 @@ build-local:
 
 client:
 	go run client/main.go $(FILE)
-
-build-client:
-	CGO_ENABLED=0 go build -o bin/media-inspector-client ./client

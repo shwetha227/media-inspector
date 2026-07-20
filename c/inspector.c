@@ -1,13 +1,10 @@
 #include "inspector.h"
-
 #include <gst/gst.h>
 #include <gst/pbutils/pbutils.h>
-
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 /* Growable string buffer so we can build JSON without a JSON library. */
 typedef struct {
     char *data;
