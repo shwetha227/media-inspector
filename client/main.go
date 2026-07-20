@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
+
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -37,7 +39,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Inspect failed: %v", err)
 	}
-fmt.Printf("%-15s: %s\n", "Container", resp.GetContainer())
+fmt.Printf("%-15s: %s\n", "Container", containerLabel(resp.GetContainer()))
 	fmt.Printf("%-15s: %.3f seconds\n", "Duration", resp.GetDurationSeconds())
 
 	for _, s := range resp.GetStreams() {
@@ -73,6 +75,30 @@ fmt.Printf("%-15s: %s\n", "Container", resp.GetContainer())
 // codecLabel turns a raw GStreamer media-type string (e.g.
 // "video/x-h264") into a short human-readable label ("H.264"),
 // falling back to the raw string for anything not in the table.
+// containerLabel turns a raw GStreamer container caps string into a
+// short, familiar format name, falling back to the raw string for
+// anything not in the table.
+func containerLabel(caps string) string {
+	switch {
+	case strings.Contains(caps, "video/quicktime"):
+		return "MP4/QuickTime"
+	case strings.Contains(caps, "video/x-matroska"):
+		return "MKV"
+	case strings.Contains(caps, "video/mpegts"):
+		return "MPEG-TS"
+	case strings.Contains(caps, "video/x-msvideo"):
+		return "AVI"
+	case strings.Contains(caps, "application/x-id3"):
+		return "MP3 (ID3)"
+	default:
+		return caps
+	}
+}
+
+
+
+
+
 func codecLabel(mediaType string) string {
 	labels := map[string]string{
 		"video/x-h264": "H.264",
