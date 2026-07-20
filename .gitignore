@@ -3,3 +3,5 @@ c/inspector_cli
 bin/
 *:Zone.Identifier
 *:Zone.Identifier
+media-inspector.tar
+bin/

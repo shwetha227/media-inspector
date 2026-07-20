@@ -3,6 +3,9 @@
 build:
 	docker build -t media-inspector:latest .
 
+build-client:
+	CGO_ENABLED=0 go build -o bin/media-inspector-client ./client
+
 run:
 	docker run --rm -p 50051:50051 \
 		-v $(shell pwd)/testdata:/testdata \
@@ -23,3 +26,6 @@ build-local:
 
 client:
 	go run client/main.go $(FILE)
+
+build-client:
+	CGO_ENABLED=0 go build -o bin/media-inspector-client ./client
