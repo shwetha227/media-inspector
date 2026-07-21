@@ -1,4 +1,5 @@
 package main
+
 import (
 	"context"
 	"fmt"
@@ -6,17 +7,20 @@ import (
 	"os"
 	"strings"
 	"time"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
 	pb "media-inspector/proto/inspectorpb"
 )
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintf(os.Stderr, "usage: %s <path-to-media-file>\n", os.Args[0])
 		os.Exit(1)
 	}
 	filePath := os.Args[1]
+
 	conn, err := grpc.NewClient("localhost:50051",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
@@ -24,35 +28,50 @@ func main() {
 		log.Fatalf("failed to connect to server: %v", err)
 	}
 	defer conn.Close()
+
 	client := pb.NewMediaInspectorClient(conn)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
 	resp, err := client.Inspect(ctx, &pb.InspectRequest{FilePath: filePath})
 	if err != nil {
 		log.Fatalf("Inspect failed: %v", err)
 	}
-fmt.Printf("%-15s: %s\n", "Container", containerLabel(resp.GetContainer()))
+
+	if resp.GetError() != "" {
+		log.Fatalf("Inspect failed: %s", resp.GetError())
+	}
+
+	fmt.Printf("%-15s: %s\n", "Container", containerLabel(resp.GetContainer()))
 	fmt.Printf("%-15s: %.3f seconds\n", "Duration", resp.GetDurationSeconds())
+
 	for _, s := range resp.GetStreams() {
 		switch s.GetType() {
 		case "video":
+			v := s.GetVideo()
 			fmt.Printf("%-15s: %s\n", "Video Codec", codecLabel(s.GetCodec()))
-			if s.GetWidth() > 0 || s.GetHeight() > 0 {
-				fmt.Printf("%-15s: %d x %d\n", "Resolution", s.GetWidth(), s.GetHeight())
-			}
-			if s.GetFps() != "" {
-				fmt.Printf("%-15s: %s\n", "FPS", fpsLabel(s.GetFps()))
+			if v != nil {
+				if v.GetWidth() > 0 || v.GetHeight() > 0 {
+					fmt.Printf("%-15s: %d x %d\n", "Resolution", v.GetWidth(), v.GetHeight())
+				}
+				if v.GetFps() != "" {
+					fmt.Printf("%-15s: %s\n", "FPS", fpsLabel(v.GetFps()))
+				}
 			}
 			if s.GetBitrate() > 0 {
 				fmt.Printf("%-15s: %d bps\n", "Video Bitrate", s.GetBitrate())
 			}
 		case "audio":
+			a := s.GetAudio()
 			fmt.Printf("%-15s: %s\n", "Audio Codec", codecLabel(s.GetCodec()))
-			if s.GetChannels() > 0 {
-				fmt.Printf("%-15s: %d\n", "Channels", s.GetChannels())
-			}
-			if s.GetSampleRate() > 0 {
-				fmt.Printf("%-15s: %d Hz\n", "Sample Rate", s.GetSampleRate())
+			if a != nil {
+				if a.GetChannels() > 0 {
+					fmt.Printf("%-15s: %d\n", "Channels", a.GetChannels())
+				}
+				if a.GetSampleRate() > 0 {
+					fmt.Printf("%-15s: %d Hz\n", "Sample Rate", a.GetSampleRate())
+				}
 			}
 			if s.GetBitrate() > 0 {
 				fmt.Printf("%-15s: %d bps\n", "Audio Bitrate", s.GetBitrate())
@@ -62,16 +81,11 @@ fmt.Printf("%-15s: %s\n", "Container", containerLabel(resp.GetContainer()))
 		}
 	}
 }
-// codecLabel turns a raw GStreamer media-type string (e.g.
-// "video/x-h264") into a short human-readable label ("H.264"),
-// falling back to the raw string for anything not in the table.
-// containerLabel turns a raw GStreamer container caps string into a
-// short, familiar format name, falling back to the raw string for
-// anything not in the table.
+
 func containerLabel(caps string) string {
 	switch {
 	case strings.Contains(caps, "video/quicktime"):
-		return "MP4"
+		return "MP4/QuickTime"
 	case strings.Contains(caps, "video/x-matroska"):
 		return "MKV"
 	case strings.Contains(caps, "video/mpegts"):
@@ -84,6 +98,7 @@ func containerLabel(caps string) string {
 		return caps
 	}
 }
+
 func codecLabel(mediaType string) string {
 	labels := map[string]string{
 		"video/x-h264": "H.264",
@@ -99,9 +114,7 @@ func codecLabel(mediaType string) string {
 	}
 	return mediaType
 }
-// fpsLabel converts a "30/1"-style fraction into a plain number when
-// the denominator is 1, and leaves genuine fractions (like "24000/1001")
-// as-is, since collapsing those would lose precision.
+
 func fpsLabel(fps string) string {
 	var n, d int
 	if _, err := fmt.Sscanf(fps, "%d/%d", &n, &d); err == nil && d == 1 {
