@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -24,21 +25,28 @@ type mediaInspectorServer struct {
 
 func (s *mediaInspectorServer) Inspect(ctx context.Context, req *pb.InspectRequest) (*pb.InspectResponse, error) {
 	path := req.GetFilePath()
+
 	if path == "" {
 		return nil, status.Error(codes.InvalidArgument, "file_path must not be empty")
 	}
 
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
-			return nil, status.Errorf(codes.InvalidArgument, "file not found: %s", path)
+			return &pb.InspectResponse{
+				Error: fmt.Sprintf("file not found: %s", path),
+			}, nil
 		}
-		return nil, status.Errorf(codes.InvalidArgument, "cannot access file: %v", err)
+		return &pb.InspectResponse{
+			Error: fmt.Sprintf("cannot access file: %v", err),
+		}, nil
 	}
 
 	info, err := inspector.Inspect(path)
 	if err != nil {
 		if errors.Is(err, inspector.ErrInspectFailed) {
-			return nil, status.Errorf(codes.InvalidArgument, "could not inspect file: %v", err)
+			return &pb.InspectResponse{
+				Error: fmt.Sprintf("could not inspect file: %v", err),
+			}, nil
 		}
 		return nil, status.Errorf(codes.Internal, "inspection failed: %v", err)
 	}
@@ -47,19 +55,35 @@ func (s *mediaInspectorServer) Inspect(ctx context.Context, req *pb.InspectReque
 		Container:       info.Container,
 		DurationSeconds: info.DurationSeconds,
 	}
-	for _, s := range info.Streams {
-		resp.Streams = append(resp.Streams, &pb.Stream{
-			Type:       s.Type,
-			Codec:      s.Codec,
-			Width:      s.Width,
-			Height:     s.Height,
-			Fps:        s.FPS,
-			Channels:   s.Channels,
-			SampleRate: s.SampleRate,
-						Bitrate:    s.Bitrate,
 
-		})
+	for _, st := range info.Streams {
+		stream := &pb.Stream{
+			Type:    st.Type,
+			Codec:   st.Codec,
+			Bitrate: st.Bitrate,
+		}
+
+		switch st.Type {
+		case "video":
+			stream.Details = &pb.Stream_Video{
+				Video: &pb.VideoDetails{
+					Width:  st.Width,
+					Height: st.Height,
+					Fps:    st.FPS,
+				},
+			}
+		case "audio":
+			stream.Details = &pb.Stream_Audio{
+				Audio: &pb.AudioDetails{
+					Channels:   st.Channels,
+					SampleRate: st.SampleRate,
+				},
+			}
+		}
+
+		resp.Streams = append(resp.Streams, stream)
 	}
+
 	return resp, nil
 }
 
