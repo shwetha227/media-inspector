@@ -17,7 +17,7 @@ func testdataDir(t *testing.T) string {
 }
 func TestInspect_HappyPath(t *testing.T) {
 	path := filepath.Join(testdataDir(t), "sample.mp4")
-	info, err := Inspect(path)
+	info, err := Inspect(path)	
 	if err != nil {
 		t.Fatalf("Inspect(%s) returned error: %v", path, err)
 	}
