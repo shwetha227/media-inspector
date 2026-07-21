@@ -18,11 +18,11 @@ test-grpc:
 	grpcurl -plaintext \
 		-proto proto/inspector.proto \
 		-import-path proto \
-		-d '{"file_path": "/testdata/sample.mp4"}' \
+		-d '{"file_path": 		"/testdata/sample.mp4"}' \
 		localhost:50051 inspector.MediaInspector/Inspect
 
 build-local:
 	CGO_ENABLED=1 go build -o bin/media-inspector-server ./server
 
 client:
-	go run client/main.go $(FILE)
+	go run client/main.go $(FILES)
