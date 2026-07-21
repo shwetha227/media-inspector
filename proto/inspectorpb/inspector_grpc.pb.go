@@ -25,7 +25,12 @@ const (
 // MediaInspectorClient is the client API for MediaInspector service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// MediaInspector inspects a media file and reports its container,
+// duration, and per-stream (video/audio) details.
 type MediaInspectorClient interface {
+	// Inspect analyzes the file at the given path and returns its
+	// container format, duration, and stream metadata.
 	Inspect(ctx context.Context, in *InspectRequest, opts ...grpc.CallOption) (*InspectResponse, error)
 }
 
@@ -50,7 +55,12 @@ func (c *mediaInspectorClient) Inspect(ctx context.Context, in *InspectRequest, 
 // MediaInspectorServer is the server API for MediaInspector service.
 // All implementations must embed UnimplementedMediaInspectorServer
 // for forward compatibility.
+//
+// MediaInspector inspects a media file and reports its container,
+// duration, and per-stream (video/audio) details.
 type MediaInspectorServer interface {
+	// Inspect analyzes the file at the given path and returns its
+	// container format, duration, and stream metadata.
 	Inspect(context.Context, *InspectRequest) (*InspectResponse, error)
 	mustEmbedUnimplementedMediaInspectorServer()
 }

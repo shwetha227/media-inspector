@@ -4,28 +4,66 @@ package inspector;
 
 option go_package = "media-inspector/proto/inspectorpb";
 
+// MediaInspector inspects a media file and reports its container,
+// duration, and per-stream (video/audio) details.
 service MediaInspector {
+  // Inspect analyzes the file at the given path and returns its
+  // container format, duration, and stream metadata.
   rpc Inspect(InspectRequest) returns (InspectResponse);
 }
 
+// InspectRequest specifies which file to inspect.
 message InspectRequest {
+  // Absolute path to the media file, as seen by the server
+  // (e.g. inside the container, this is the mounted path).
   string file_path = 1;
 }
 
+// VideoDetails holds fields that only exist for a video stream.
+// A Stream of type "audio" will never have this populated.
+message VideoDetails {
+  uint32 width = 1;
+  uint32 height = 2;
+  string fps = 3;
+}
+
+// AudioDetails holds fields that only exist for an audio stream.
+// A Stream of type "video" will never have this populated.
+message AudioDetails {
+  uint32 channels = 1;
+  uint32 sample_rate = 2;
+}
+
+// Stream describes a single video or audio track found inside a
+// media file.
+//
+// `details` holds exactly one of `video` or `audio`, matching
+// `type` — this is a structural guarantee: an audio stream's
+// message literally has no width/height/fps fields, and a video
+// stream's message literally has no channels/sample_rate fields.
 message Stream {
   string type = 1;
   string codec = 2;
-  uint32 width = 3;
-  uint32 height = 4;
-  string fps = 5;
-  uint32 channels = 6;
-  uint32 sample_rate = 7;
-    uint32 bitrate = 8;
+  uint32 bitrate = 3;
 
+  oneof details {
+    VideoDetails video = 4;
+    AudioDetails audio = 5;
+  }
 }
 
+// InspectResponse contains the result of inspecting a media file.
+//
+// If `error` is non-empty, inspection did not succeed — `container`,
+// `duration_seconds`, and `streams` will be unset, and callers should
+// display or handle `error` instead.
+//
+// Note: malformed requests (e.g. an empty file_path) are still
+// reported as a gRPC error status, not through this field — `error`
+// is specifically for problems with the file itself.
 message InspectResponse {
   string container = 1;
   double duration_seconds = 2;
   repeated Stream streams = 3;
+  string error = 4;
 }
