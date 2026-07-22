@@ -15,12 +15,25 @@ import (
 	pb "media-inspector/proto/inspectorpb"
 )
 
+type target struct {
+	label string // what to print
+	path  string // what to send to the server
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprintf(os.Stderr, "usage: %s <path-to-media-file> [more-paths...]\n", os.Args[0])
 		os.Exit(1)
 	}
-	filePaths := os.Args[1:]
+
+	targets := make([]target, 0, len(os.Args)-1)
+	for _, arg := range os.Args[1:] {
+		if label, path, found := strings.Cut(arg, "|||"); found {
+			targets = append(targets, target{label: label, path: path})
+		} else {
+			targets = append(targets, target{label: arg, path: arg})
+		}
+	}
 
 	conn, err := grpc.NewClient("localhost:50051",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -35,30 +48,30 @@ func main() {
 	var wg sync.WaitGroup
 	var printMu sync.Mutex
 
-	for _, filePath := range filePaths {
+	for _, t := range targets {
 		wg.Add(1)
-		go func(filePath string) {
+		go func(t target) {
 			defer wg.Done()
 
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
-			resp, err := client.Inspect(ctx, &pb.InspectRequest{FilePath: filePath})
+			resp, err := client.Inspect(ctx, &pb.InspectRequest{FilePath: t.path})
 
 			printMu.Lock()
 			defer printMu.Unlock()
 
 			if err != nil {
-				fmt.Printf("=== %s ===\nError: Inspect failed: %v\n\n", filePath, err)
+				fmt.Printf("=== %s ===\nError: Inspect failed: %v\n\n", t.label, err)
 				return
 			}
 			if resp.GetError() != "" {
-				fmt.Printf("=== %s ===\nError: Inspect failed: %s\n\n", filePath, resp.GetError())
+				fmt.Printf("=== %s ===\nError: Inspect failed: %s\n\n", t.label, resp.GetError())
 				return
 			}
 
-			fmt.Printf("=== %s ===\n%s\n", filePath, formatResult(resp))
-		}(filePath)
+			fmt.Printf("=== %s ===\n%s\n", t.label, formatResult(resp))
+		}(t)
 	}
 
 	wg.Wait()

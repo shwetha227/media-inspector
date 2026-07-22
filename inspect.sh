@@ -8,18 +8,20 @@ fi
 
 CONTAINER_NAME=media-inspector-run
 VOLUME_ARGS=()
-CONTAINER_PATHS=()
+CLIENT_ARGS=()
 
 i=0
-for FILE in "$@"; do
+for ORIGINAL_FILE in "$@"; do
+  FILE="$ORIGINAL_FILE"
+
   # Auto-convert Windows-style paths (C:\...) to WSL paths (/mnt/c/...)
   if [[ "$FILE" == *:\\* ]] && command -v wslpath >/dev/null 2>&1; then
     FILE="$(wslpath -u "$FILE")"
   fi
 
   if [ ! -f "$FILE" ]; then
-    echo "=== $FILE ===" 
-    echo "Error: file not found: $FILE"
+    echo "=== $ORIGINAL_FILE ==="
+    echo "Error: file not found: $ORIGINAL_FILE"
     echo
     i=$((i + 1))
     continue
@@ -28,15 +30,13 @@ for FILE in "$@"; do
   ABS_PATH="$(cd "$(dirname "$FILE")" && pwd)/$(basename "$FILE")"
   BASENAME="$(basename "$ABS_PATH")"
 
-  # Mount each file individually under its own index, so files with
-  # the same basename in different directories don't collide.
   VOLUME_ARGS+=(-v "$ABS_PATH:/data/$i/$BASENAME:ro")
-  CONTAINER_PATHS+=("/data/$i/$BASENAME")
+  CLIENT_ARGS+=("${ORIGINAL_FILE}|||/data/$i/$BASENAME")
 
   i=$((i + 1))
 done
 
-if [ "${#CONTAINER_PATHS[@]}" -eq 0 ]; then
+if [ "${#CLIENT_ARGS[@]}" -eq 0 ]; then
   echo "no valid files to inspect" >&2
   exit 1
 fi
@@ -46,7 +46,6 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# free the port if a stale container is still holding it
 docker ps --filter "publish=50051" -q | xargs -r docker stop >/dev/null 2>&1 || true
 
 docker run -d --rm --name "$CONTAINER_NAME" \
@@ -61,4 +60,4 @@ for i in $(seq 1 30); do
   sleep 0.3
 done
 
-./bin/media-inspector-client "${CONTAINER_PATHS[@]}"
+./bin/media-inspector-client "${CLIENT_ARGS[@]}"
