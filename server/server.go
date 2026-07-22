@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"sync"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -24,34 +25,57 @@ type mediaInspectorServer struct {
 }
 
 func (s *mediaInspectorServer) Inspect(ctx context.Context, req *pb.InspectRequest) (*pb.InspectResponse, error) {
-	path := req.GetFilePath()
+	paths := req.GetFilePaths()
 
-	if path == "" {
-		return nil, status.Error(codes.InvalidArgument, "file_path must not be empty")
+	if len(paths) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "file_paths must not be empty")
 	}
 
+	results := make([]*pb.FileResult, len(paths))
+
+	var wg sync.WaitGroup
+	for i, path := range paths {
+		wg.Add(1)
+		go func(i int, path string) {
+			defer wg.Done()
+			results[i] = inspectOne(path)
+		}(i, path)
+	}
+	wg.Wait()
+
+	return &pb.InspectResponse{Results: results}, nil
+}
+
+func inspectOne(path string) *pb.FileResult {
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
-			return &pb.InspectResponse{
-				Error: fmt.Sprintf("file not found: %s", path),
-			}, nil
+			return &pb.FileResult{
+				FilePath: path,
+				Error:    fmt.Sprintf("file not found: %s", path),
+			}
 		}
-		return &pb.InspectResponse{
-			Error: fmt.Sprintf("cannot access file: %v", err),
-		}, nil
+		return &pb.FileResult{
+			FilePath: path,
+			Error:    fmt.Sprintf("cannot access file: %v", err),
+		}
 	}
 
 	info, err := inspector.Inspect(path)
 	if err != nil {
 		if errors.Is(err, inspector.ErrInspectFailed) {
-			return &pb.InspectResponse{
-				Error: fmt.Sprintf("could not inspect file: %v", err),
-			}, nil
+			return &pb.FileResult{
+				FilePath: path,
+				Error:    fmt.Sprintf("could not inspect file: %v", err),
+			}
 		}
-		return nil, status.Errorf(codes.Internal, "inspection failed: %v", err)
+		return &pb.FileResult{
+			FilePath: path,
+			Error:    fmt.Sprintf("inspection failed: %v", err),
+		}
 	}
 
-	resp := &pb.InspectResponse{
+	result := &pb.FileResult{
+		FilePath:        path,
 		Container:       info.Container,
 		DurationSeconds: info.DurationSeconds,
 	}
@@ -79,10 +103,10 @@ func (s *mediaInspectorServer) Inspect(ctx context.Context, req *pb.InspectReque
 				},
 			}
 		}
-		resp.Streams = append(resp.Streams, stream)
+		result.Streams = append(result.Streams, stream)
 	}
 
-	return resp, nil
+	return result
 }
 
 func main() {

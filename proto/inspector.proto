@@ -4,41 +4,31 @@ package inspector;
 
 option go_package = "media-inspector/proto/inspectorpb";
 
-// MediaInspector inspects a media file and reports its container,
-// duration, and per-stream (video/audio) details.
+// MediaInspector inspects one or more media files and reports each
+// one's container, duration, and per-stream (video/audio) details.
 service MediaInspector {
-  // Inspect analyzes the file at the given path and returns its
-  // container format, duration, and stream metadata.
+  // Inspect analyzes every file path given in the request. The
+  // server processes all of them concurrently and returns a single
+  // response only once every file has finished, with one FileResult
+  // per input path, in the same order they were requested.
   rpc Inspect(InspectRequest) returns (InspectResponse);
 }
 
-// InspectRequest specifies which file to inspect.
 message InspectRequest {
-  // Absolute path to the media file, as seen by the server
-  // (e.g. inside the container, this is the mounted path).
-  string file_path = 1;
+  repeated string file_paths = 1;
 }
 
-// VideoDetails holds fields that only exist for a video stream.
 message VideoDetails {
   uint32 width = 1;
   uint32 height = 2;
   string fps = 3;
 }
 
-// AudioDetails holds fields that only exist for an audio stream.
 message AudioDetails {
   uint32 channels = 1;
   uint32 sample_rate = 2;
 }
 
-// Stream describes a single video or audio track found inside a
-// media file.
-//
-// Which kind of stream this is — video or audio — is determined by
-// which field of `details` is set, via the oneof itself; there is no
-// separate discriminator field, since one would just duplicate what
-// the oneof already guarantees.
 message Stream {
   string codec = 1;
   uint32 bitrate = 2;
@@ -46,21 +36,17 @@ message Stream {
   oneof details {
     VideoDetails video = 3;
     AudioDetails audio = 4;
-  }
+  } 
+}
+// FileResult holds the outcome of inspecting a single file.
+message FileResult {
+  string file_path = 1;
+  string container = 2;
+  double duration_seconds = 3;
+  repeated Stream streams = 4;
+  string error = 5;
 }
 
-// InspectResponse contains the result of inspecting a media file.
-//
-// If `error` is non-empty, inspection did not succeed — `container`,
-// `duration_seconds`, and `streams` will be unset, and callers should
-// display or handle `error` instead.
-//
-// Note: malformed requests (e.g. an empty file_path) are still
-// reported as a gRPC error status, not through this field — `error`
-// is specifically for problems with the file itself.
 message InspectResponse {
-  string container = 1;
-  double duration_seconds = 2;
-  repeated Stream streams = 3;
-  string error = 4;
+  repeated FileResult results = 1;
 }

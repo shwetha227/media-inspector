@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"google.golang.org/grpc"
@@ -15,9 +14,12 @@ import (
 	pb "media-inspector/proto/inspectorpb"
 )
 
+// target pairs the label to display for a file (e.g. the original
+// Windows path the user typed) with the actual path to send the
+// server (e.g. the path as mounted inside the container).
 type target struct {
-	label string // what to print
-	path  string // what to send to the server
+	label string
+	path  string
 }
 
 func main() {
@@ -27,11 +29,14 @@ func main() {
 	}
 
 	targets := make([]target, 0, len(os.Args)-1)
+	paths := make([]string, 0, len(os.Args)-1)
 	for _, arg := range os.Args[1:] {
 		if label, path, found := strings.Cut(arg, "|||"); found {
 			targets = append(targets, target{label: label, path: path})
+			paths = append(paths, path)
 		} else {
 			targets = append(targets, target{label: arg, path: arg})
+			paths = append(paths, arg)
 		}
 	}
 
@@ -45,45 +50,40 @@ func main() {
 
 	client := pb.NewMediaInspectorClient(conn)
 
-	var wg sync.WaitGroup
-	var printMu sync.Mutex
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-	for _, t := range targets {
-		wg.Add(1)
-		go func(t target) {
-			defer wg.Done()
-
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-
-			resp, err := client.Inspect(ctx, &pb.InspectRequest{FilePath: t.path})
-
-			printMu.Lock()
-			defer printMu.Unlock()
-
-			if err != nil {
-				fmt.Printf("=== %s ===\nError: Inspect failed: %v\n\n", t.label, err)
-				return
-			}
-			if resp.GetError() != "" {
-				fmt.Printf("=== %s ===\nError: Inspect failed: %s\n\n", t.label, resp.GetError())
-				return
-			}
-
-			fmt.Printf("=== %s ===\n%s\n", t.label, formatResult(resp))
-		}(t)
+	resp, err := client.Inspect(ctx, &pb.InspectRequest{FilePaths: paths})
+	if err != nil {
+		log.Fatalf("Inspect failed: %v", err)
 	}
 
-	wg.Wait()
+	results := resp.GetResults()
+	for i, t := range targets {
+		fmt.Printf("=== %s ===\n", t.label)
+
+		if i >= len(results) {
+			fmt.Printf("Error: no result returned for this file\n\n")
+			continue
+		}
+
+		result := results[i]
+		if result.GetError() != "" {
+			fmt.Printf("Error: %s\n\n", result.GetError())
+			continue
+		}
+		fmt.Print(formatResult(result))
+		fmt.Println()
+	}
 }
 
-func formatResult(resp *pb.InspectResponse) string {
+func formatResult(result *pb.FileResult) string {
 	var b strings.Builder
 
-	fmt.Fprintf(&b, "%-15s: %s\n", "Container", containerLabel(resp.GetContainer()))
-	fmt.Fprintf(&b, "%-15s: %.3f seconds\n", "Duration", resp.GetDurationSeconds())
+	fmt.Fprintf(&b, "%-15s: %s\n", "Container", containerLabel(result.GetContainer()))
+	fmt.Fprintf(&b, "%-15s: %.3f seconds\n", "Duration", result.GetDurationSeconds())
 
-	for _, s := range resp.GetStreams() {
+	for _, s := range result.GetStreams() {
 		switch {
 		case s.GetVideo() != nil:
 			v := s.GetVideo()

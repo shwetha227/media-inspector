@@ -24,7 +24,7 @@ func TestInspect_HappyPath(t *testing.T) {
 	if info.Container == "" {
 		t.Error("expected a non-empty container")
 	}
-	if len(info.Streams) == 0 {
+	if len(info.Streams) == 0 {	
 		t.Fatal("expected at least one stream")
 	}
 	if info.Streams[0].Type != "video" {

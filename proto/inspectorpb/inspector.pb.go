@@ -21,12 +21,9 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// InspectRequest specifies which file to inspect.
 type InspectRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Absolute path to the media file, as seen by the server
-	// (e.g. inside the container, this is the mounted path).
-	FilePath      string `protobuf:"bytes,1,opt,name=file_path,json=filePath,proto3" json:"file_path,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	FilePaths     []string               `protobuf:"bytes,1,rep,name=file_paths,json=filePaths,proto3" json:"file_paths,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -61,15 +58,13 @@ func (*InspectRequest) Descriptor() ([]byte, []int) {
 	return file_inspector_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *InspectRequest) GetFilePath() string {
+func (x *InspectRequest) GetFilePaths() []string {
 	if x != nil {
-		return x.FilePath
+		return x.FilePaths
 	}
-	return ""
+	return nil
 }
 
-// VideoDetails holds fields that only exist for a video stream.
-// A Stream of type "audio" will never have this populated.
 type VideoDetails struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Width         uint32                 `protobuf:"varint,1,opt,name=width,proto3" json:"width,omitempty"`
@@ -130,8 +125,6 @@ func (x *VideoDetails) GetFps() string {
 	return ""
 }
 
-// AudioDetails holds fields that only exist for an audio stream.
-// A Stream of type "video" will never have this populated.
 type AudioDetails struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Channels      uint32                 `protobuf:"varint,1,opt,name=channels,proto3" json:"channels,omitempty"`
@@ -184,18 +177,10 @@ func (x *AudioDetails) GetSampleRate() uint32 {
 	return 0
 }
 
-// Stream describes a single video or audio track found inside a
-// media file.
-//
-// `details` holds exactly one of `video` or `audio`, matching
-// `type` — this is a structural guarantee: an audio stream's
-// message literally has no width/height/fps fields, and a video
-// stream's message literally has no channels/sample_rate fields.
 type Stream struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
-	Type    string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	Codec   string                 `protobuf:"bytes,2,opt,name=codec,proto3" json:"codec,omitempty"`
-	Bitrate uint32                 `protobuf:"varint,3,opt,name=bitrate,proto3" json:"bitrate,omitempty"`
+	Codec   string                 `protobuf:"bytes,1,opt,name=codec,proto3" json:"codec,omitempty"`
+	Bitrate uint32                 `protobuf:"varint,2,opt,name=bitrate,proto3" json:"bitrate,omitempty"`
 	// Types that are valid to be assigned to Details:
 	//
 	//	*Stream_Video
@@ -233,13 +218,6 @@ func (x *Stream) ProtoReflect() protoreflect.Message {
 // Deprecated: Use Stream.ProtoReflect.Descriptor instead.
 func (*Stream) Descriptor() ([]byte, []int) {
 	return file_inspector_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *Stream) GetType() string {
-	if x != nil {
-		return x.Type
-	}
-	return ""
 }
 
 func (x *Stream) GetCodec() string {
@@ -286,39 +264,104 @@ type isStream_Details interface {
 }
 
 type Stream_Video struct {
-	Video *VideoDetails `protobuf:"bytes,4,opt,name=video,proto3,oneof"`
+	Video *VideoDetails `protobuf:"bytes,3,opt,name=video,proto3,oneof"`
 }
 
 type Stream_Audio struct {
-	Audio *AudioDetails `protobuf:"bytes,5,opt,name=audio,proto3,oneof"`
+	Audio *AudioDetails `protobuf:"bytes,4,opt,name=audio,proto3,oneof"`
 }
 
 func (*Stream_Video) isStream_Details() {}
 
 func (*Stream_Audio) isStream_Details() {}
 
-// InspectResponse contains the result of inspecting a media file.
-//
-// If `error` is non-empty, inspection did not succeed — `container`,
-// `duration_seconds`, and `streams` will be unset, and callers should
-// display or handle `error` instead.
-//
-// Note: malformed requests (e.g. an empty file_path) are still
-// reported as a gRPC error status, not through this field — `error`
-// is specifically for problems with the file itself.
-type InspectResponse struct {
+// FileResult holds the outcome of inspecting a single file.
+type FileResult struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
-	Container       string                 `protobuf:"bytes,1,opt,name=container,proto3" json:"container,omitempty"`
-	DurationSeconds float64                `protobuf:"fixed64,2,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"`
-	Streams         []*Stream              `protobuf:"bytes,3,rep,name=streams,proto3" json:"streams,omitempty"`
-	Error           string                 `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
+	FilePath        string                 `protobuf:"bytes,1,opt,name=file_path,json=filePath,proto3" json:"file_path,omitempty"`
+	Container       string                 `protobuf:"bytes,2,opt,name=container,proto3" json:"container,omitempty"`
+	DurationSeconds float64                `protobuf:"fixed64,3,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"`
+	Streams         []*Stream              `protobuf:"bytes,4,rep,name=streams,proto3" json:"streams,omitempty"`
+	Error           string                 `protobuf:"bytes,5,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
 
+func (x *FileResult) Reset() {
+	*x = FileResult{}
+	mi := &file_inspector_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FileResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FileResult) ProtoMessage() {}
+
+func (x *FileResult) ProtoReflect() protoreflect.Message {
+	mi := &file_inspector_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FileResult.ProtoReflect.Descriptor instead.
+func (*FileResult) Descriptor() ([]byte, []int) {
+	return file_inspector_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *FileResult) GetFilePath() string {
+	if x != nil {
+		return x.FilePath
+	}
+	return ""
+}
+
+func (x *FileResult) GetContainer() string {
+	if x != nil {
+		return x.Container
+	}
+	return ""
+}
+
+func (x *FileResult) GetDurationSeconds() float64 {
+	if x != nil {
+		return x.DurationSeconds
+	}
+	return 0
+}
+
+func (x *FileResult) GetStreams() []*Stream {
+	if x != nil {
+		return x.Streams
+	}
+	return nil
+}
+
+func (x *FileResult) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type InspectResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Results       []*FileResult          `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
 func (x *InspectResponse) Reset() {
 	*x = InspectResponse{}
-	mi := &file_inspector_proto_msgTypes[4]
+	mi := &file_inspector_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -330,7 +373,7 @@ func (x *InspectResponse) String() string {
 func (*InspectResponse) ProtoMessage() {}
 
 func (x *InspectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_inspector_proto_msgTypes[4]
+	mi := &file_inspector_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -343,44 +386,24 @@ func (x *InspectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InspectResponse.ProtoReflect.Descriptor instead.
 func (*InspectResponse) Descriptor() ([]byte, []int) {
-	return file_inspector_proto_rawDescGZIP(), []int{4}
+	return file_inspector_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *InspectResponse) GetContainer() string {
+func (x *InspectResponse) GetResults() []*FileResult {
 	if x != nil {
-		return x.Container
-	}
-	return ""
-}
-
-func (x *InspectResponse) GetDurationSeconds() float64 {
-	if x != nil {
-		return x.DurationSeconds
-	}
-	return 0
-}
-
-func (x *InspectResponse) GetStreams() []*Stream {
-	if x != nil {
-		return x.Streams
+		return x.Results
 	}
 	return nil
-}
-
-func (x *InspectResponse) GetError() string {
-	if x != nil {
-		return x.Error
-	}
-	return ""
 }
 
 var File_inspector_proto protoreflect.FileDescriptor
 
 const file_inspector_proto_rawDesc = "" +
 	"\n" +
-	"\x0finspector.proto\x12\tinspector\"-\n" +
-	"\x0eInspectRequest\x12\x1b\n" +
-	"\tfile_path\x18\x01 \x01(\tR\bfilePath\"N\n" +
+	"\x0finspector.proto\x12\tinspector\"/\n" +
+	"\x0eInspectRequest\x12\x1d\n" +
+	"\n" +
+	"file_paths\x18\x01 \x03(\tR\tfilePaths\"N\n" +
 	"\fVideoDetails\x12\x14\n" +
 	"\x05width\x18\x01 \x01(\rR\x05width\x12\x16\n" +
 	"\x06height\x18\x02 \x01(\rR\x06height\x12\x10\n" +
@@ -388,19 +411,22 @@ const file_inspector_proto_rawDesc = "" +
 	"\fAudioDetails\x12\x1a\n" +
 	"\bchannels\x18\x01 \x01(\rR\bchannels\x12\x1f\n" +
 	"\vsample_rate\x18\x02 \x01(\rR\n" +
-	"sampleRate\"\xb9\x01\n" +
-	"\x06Stream\x12\x12\n" +
-	"\x04type\x18\x01 \x01(\tR\x04type\x12\x14\n" +
-	"\x05codec\x18\x02 \x01(\tR\x05codec\x12\x18\n" +
-	"\abitrate\x18\x03 \x01(\rR\abitrate\x12/\n" +
-	"\x05video\x18\x04 \x01(\v2\x17.inspector.VideoDetailsH\x00R\x05video\x12/\n" +
-	"\x05audio\x18\x05 \x01(\v2\x17.inspector.AudioDetailsH\x00R\x05audioB\t\n" +
-	"\adetails\"\x9d\x01\n" +
-	"\x0fInspectResponse\x12\x1c\n" +
-	"\tcontainer\x18\x01 \x01(\tR\tcontainer\x12)\n" +
-	"\x10duration_seconds\x18\x02 \x01(\x01R\x0fdurationSeconds\x12+\n" +
-	"\astreams\x18\x03 \x03(\v2\x11.inspector.StreamR\astreams\x12\x14\n" +
-	"\x05error\x18\x04 \x01(\tR\x05error2R\n" +
+	"sampleRate\"\xa5\x01\n" +
+	"\x06Stream\x12\x14\n" +
+	"\x05codec\x18\x01 \x01(\tR\x05codec\x12\x18\n" +
+	"\abitrate\x18\x02 \x01(\rR\abitrate\x12/\n" +
+	"\x05video\x18\x03 \x01(\v2\x17.inspector.VideoDetailsH\x00R\x05video\x12/\n" +
+	"\x05audio\x18\x04 \x01(\v2\x17.inspector.AudioDetailsH\x00R\x05audioB\t\n" +
+	"\adetails\"\xb5\x01\n" +
+	"\n" +
+	"FileResult\x12\x1b\n" +
+	"\tfile_path\x18\x01 \x01(\tR\bfilePath\x12\x1c\n" +
+	"\tcontainer\x18\x02 \x01(\tR\tcontainer\x12)\n" +
+	"\x10duration_seconds\x18\x03 \x01(\x01R\x0fdurationSeconds\x12+\n" +
+	"\astreams\x18\x04 \x03(\v2\x11.inspector.StreamR\astreams\x12\x14\n" +
+	"\x05error\x18\x05 \x01(\tR\x05error\"B\n" +
+	"\x0fInspectResponse\x12/\n" +
+	"\aresults\x18\x01 \x03(\v2\x15.inspector.FileResultR\aresults2R\n" +
 	"\x0eMediaInspector\x12@\n" +
 	"\aInspect\x12\x19.inspector.InspectRequest\x1a\x1a.inspector.InspectResponseB#Z!media-inspector/proto/inspectorpbb\x06proto3"
 
@@ -416,25 +442,27 @@ func file_inspector_proto_rawDescGZIP() []byte {
 	return file_inspector_proto_rawDescData
 }
 
-var file_inspector_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_inspector_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_inspector_proto_goTypes = []any{
 	(*InspectRequest)(nil),  // 0: inspector.InspectRequest
 	(*VideoDetails)(nil),    // 1: inspector.VideoDetails
 	(*AudioDetails)(nil),    // 2: inspector.AudioDetails
 	(*Stream)(nil),          // 3: inspector.Stream
-	(*InspectResponse)(nil), // 4: inspector.InspectResponse
+	(*FileResult)(nil),      // 4: inspector.FileResult
+	(*InspectResponse)(nil), // 5: inspector.InspectResponse
 }
 var file_inspector_proto_depIdxs = []int32{
 	1, // 0: inspector.Stream.video:type_name -> inspector.VideoDetails
 	2, // 1: inspector.Stream.audio:type_name -> inspector.AudioDetails
-	3, // 2: inspector.InspectResponse.streams:type_name -> inspector.Stream
-	0, // 3: inspector.MediaInspector.Inspect:input_type -> inspector.InspectRequest
-	4, // 4: inspector.MediaInspector.Inspect:output_type -> inspector.InspectResponse
-	4, // [4:5] is the sub-list for method output_type
-	3, // [3:4] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	3, // 2: inspector.FileResult.streams:type_name -> inspector.Stream
+	4, // 3: inspector.InspectResponse.results:type_name -> inspector.FileResult
+	0, // 4: inspector.MediaInspector.Inspect:input_type -> inspector.InspectRequest
+	5, // 5: inspector.MediaInspector.Inspect:output_type -> inspector.InspectResponse
+	5, // [5:6] is the sub-list for method output_type
+	4, // [4:5] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_inspector_proto_init() }
@@ -452,7 +480,7 @@ func file_inspector_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_inspector_proto_rawDesc), len(file_inspector_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
