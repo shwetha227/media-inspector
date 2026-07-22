@@ -71,37 +71,33 @@ func formatResult(resp *pb.InspectResponse) string {
 	fmt.Fprintf(&b, "%-15s: %.3f seconds\n", "Duration", resp.GetDurationSeconds())
 
 	for _, s := range resp.GetStreams() {
-		switch s.GetType() {
-		case "video":
+		switch {
+		case s.GetVideo() != nil:
 			v := s.GetVideo()
 			fmt.Fprintf(&b, "%-15s: %s\n", "Video Codec", codecLabel(s.GetCodec()))
-			if v != nil {
-				if v.GetWidth() > 0 || v.GetHeight() > 0 {
-					fmt.Fprintf(&b, "%-15s: %d x %d\n", "Resolution", v.GetWidth(), v.GetHeight())
-				}
-				if v.GetFps() != "" {
-					fmt.Fprintf(&b, "%-15s: %s\n", "FPS", fpsLabel(v.GetFps()))
-				}
+			if v.GetWidth() > 0 || v.GetHeight() > 0 {
+				fmt.Fprintf(&b, "%-15s: %d x %d\n", "Resolution", v.GetWidth(), v.GetHeight())
+			}
+			if v.GetFps() != "" {
+				fmt.Fprintf(&b, "%-15s: %s\n", "FPS", fpsLabel(v.GetFps()))
 			}
 			if s.GetBitrate() > 0 {
 				fmt.Fprintf(&b, "%-15s: %d bps\n", "Video Bitrate", s.GetBitrate())
 			}
-		case "audio":
+		case s.GetAudio() != nil:
 			a := s.GetAudio()
 			fmt.Fprintf(&b, "%-15s: %s\n", "Audio Codec", codecLabel(s.GetCodec()))
-			if a != nil {
-				if a.GetChannels() > 0 {
-					fmt.Fprintf(&b, "%-15s: %d\n", "Channels", a.GetChannels())
-				}
-				if a.GetSampleRate() > 0 {
-					fmt.Fprintf(&b, "%-15s: %d Hz\n", "Sample Rate", a.GetSampleRate())
-				}
+			if a.GetChannels() > 0 {
+				fmt.Fprintf(&b, "%-15s: %d\n", "Channels", a.GetChannels())
+			}
+			if a.GetSampleRate() > 0 {
+				fmt.Fprintf(&b, "%-15s: %d Hz\n", "Sample Rate", a.GetSampleRate())
 			}
 			if s.GetBitrate() > 0 {
 				fmt.Fprintf(&b, "%-15s: %d bps\n", "Audio Bitrate", s.GetBitrate())
 			}
 		default:
-			fmt.Fprintf(&b, "%-15s: %s (%s)\n", "Stream", s.GetType(), s.GetCodec())
+			fmt.Fprintf(&b, "%-15s: %s\n", "Stream", codecLabel(s.GetCodec()))
 		}
 	}
 

@@ -20,7 +20,6 @@ message InspectRequest {
 }
 
 // VideoDetails holds fields that only exist for a video stream.
-// A Stream of type "audio" will never have this populated.
 message VideoDetails {
   uint32 width = 1;
   uint32 height = 2;
@@ -28,7 +27,6 @@ message VideoDetails {
 }
 
 // AudioDetails holds fields that only exist for an audio stream.
-// A Stream of type "video" will never have this populated.
 message AudioDetails {
   uint32 channels = 1;
   uint32 sample_rate = 2;
@@ -37,18 +35,17 @@ message AudioDetails {
 // Stream describes a single video or audio track found inside a
 // media file.
 //
-// `details` holds exactly one of `video` or `audio`, matching
-// `type` — this is a structural guarantee: an audio stream's
-// message literally has no width/height/fps fields, and a video
-// stream's message literally has no channels/sample_rate fields.
+// Which kind of stream this is — video or audio — is determined by
+// which field of `details` is set, via the oneof itself; there is no
+// separate discriminator field, since one would just duplicate what
+// the oneof already guarantees.
 message Stream {
-  string type = 1;
-  string codec = 2;
-  uint32 bitrate = 3;
+  string codec = 1;
+  uint32 bitrate = 2;
 
   oneof details {
-    VideoDetails video = 4;
-    AudioDetails audio = 5;
+    VideoDetails video = 3;
+    AudioDetails audio = 4;
   }
 }
 

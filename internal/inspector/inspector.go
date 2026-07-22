@@ -1,8 +1,10 @@
 // Package inspector wraps the C GStreamer-backed media inspector via cgo.
 package inspector
+
 /*
 #cgo pkg-config: gstreamer-1.0 gstreamer-pbutils-1.0
 #cgo CFLAGS: -I${SRCDIR}/../../c
+#cgo LDFLAGS: -lpthread
 #include <stdlib.h>
 #include "inspector.h"
 #include "inspector.c"
@@ -28,8 +30,7 @@ type Stream struct {
 	FPS        string `json:"fps,omitempty"`
 	Channels   uint32 `json:"channels,omitempty"`
 	SampleRate uint32 `json:"sample_rate,omitempty"`
-		Bitrate    uint32 `json:"bitrate,omitempty"`
-
+	Bitrate    uint32 `json:"bitrate,omitempty"`
 }
 
 // MediaInfo is the parsed result of inspecting a media file. Error is

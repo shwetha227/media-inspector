@@ -18,8 +18,11 @@ for FILE in "$@"; do
   fi
 
   if [ ! -f "$FILE" ]; then
-    echo "file not found: $FILE" >&2
-    exit 1
+    echo "=== $FILE ===" 
+    echo "Error: file not found: $FILE"
+    echo
+    i=$((i + 1))
+    continue
   fi
 
   ABS_PATH="$(cd "$(dirname "$FILE")" && pwd)/$(basename "$FILE")"
@@ -32,6 +35,11 @@ for FILE in "$@"; do
 
   i=$((i + 1))
 done
+
+if [ "${#CONTAINER_PATHS[@]}" -eq 0 ]; then
+  echo "no valid files to inspect" >&2
+  exit 1
+fi
 
 cleanup() {
   docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true

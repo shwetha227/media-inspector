@@ -58,7 +58,6 @@ func (s *mediaInspectorServer) Inspect(ctx context.Context, req *pb.InspectReque
 
 	for _, st := range info.Streams {
 		stream := &pb.Stream{
-			Type:    st.Type,
 			Codec:   st.Codec,
 			Bitrate: st.Bitrate,
 		}
@@ -80,7 +79,6 @@ func (s *mediaInspectorServer) Inspect(ctx context.Context, req *pb.InspectReque
 				},
 			}
 		}
-
 		resp.Streams = append(resp.Streams, stream)
 	}
 

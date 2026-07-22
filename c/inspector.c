@@ -1,10 +1,12 @@
 #include "inspector.h"
 #include <gst/gst.h>
 #include <gst/pbutils/pbutils.h>
+#include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 /* Growable string buffer so we can build JSON without a JSON library. */
 typedef struct {
     char *data;
@@ -137,14 +139,26 @@ static void collect_streams(strbuf *sb, GstDiscovererStreamInfo *info, gboolean 
     }
 }
 
+/* GStreamer initialization touches global registry/plugin state and is
+ * not safe to call concurrently. The server may receive several Inspect
+ * RPCs at once (e.g. a client inspecting multiple files in parallel),
+ * so a plain "if (!gst_is_initialized()) gst_init(...)" check-then-act
+ * here would be a data race: multiple goroutines could all observe
+ * "not initialized" and call gst_init() at the same time. pthread_once
+ * guarantees the init function runs exactly once, and every concurrent
+ * caller blocks until that single call completes. */
+static pthread_once_t gst_init_once = PTHREAD_ONCE_INIT;
+
+static void do_gst_init(void) {
+    gst_init(NULL, NULL);
+}
+
 char *inspect_media(const char *filepath) {
     if (filepath == NULL || filepath[0] == '\0') {
         return NULL;
     }
 
-    if (!gst_is_initialized()) {
-        gst_init(NULL, NULL);
-    }
+    pthread_once(&gst_init_once, do_gst_init);
 
     GError *err = NULL;
     gchar *abs_path = filepath[0] == '/'
