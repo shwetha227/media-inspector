@@ -135,15 +135,17 @@ func containerLabel(caps string) string {
 }
 
 func codecLabel(mediaType string) string {
-	labels := map[string]string{
-		"video/x-h264": "H.264",
-		"video/x-h265": "H.265",
-		"video/x-vp8":  "VP8",
-		"video/x-vp9":  "VP9",
-		"audio/mpeg":   "AAC/MP3",
-		"audio/x-opus": "Opus",
-		"audio/x-flac": "FLAC",
-	}
+labels := map[string]string{
+    "video/x-h264": "H.264",
+    "video/x-h265": "H.265",
+    "video/x-vp8":  "VP8",
+    "video/x-vp9":  "VP9",
+    "audio/aac":    "AAC",
+    "audio/mp3":    "MP3",
+    "audio/mpeg":   "AAC/MP3", // fallback
+    "audio/x-opus": "Opus",
+    "audio/x-flac": "FLAC",
+}
 	if label, ok := labels[mediaType]; ok {
 		return label
 	}

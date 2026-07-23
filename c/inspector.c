@@ -62,6 +62,39 @@ static char *build_error_json(const char *message) {
     return sb.data;
 }
 
+/* "audio/mpeg" alone doesn't distinguish MP3 from AAC — both use this
+ * same top-level media type in GStreamer. The actual distinction lives
+ * in extra caps fields: MP3 is mpegversion=1 (with layer=3), AAC is
+ * mpegversion=4. This refines the plain media type into a more
+ * specific codec string using those fields, when present, so callers
+ * downstream (like the client's codec label lookup) can tell them
+ * apart. Falls back to the original media_type if the fields aren't
+ * present or don't match a known case. */
+static const char *refine_codec(const GstStructure *s, const gchar *media_type) {
+    if (g_strcmp0(media_type, "audio/mpeg") != 0) {
+        return media_type;
+    }
+
+    gint mpegversion = 0;
+    if (!gst_structure_get_int(s, "mpegversion", &mpegversion)) {
+        return media_type;
+    }
+
+    if (mpegversion == 4) {
+        return "audio/aac";
+    }
+
+    if (mpegversion == 1) {
+        gint layer = 0;
+        gst_structure_get_int(s, "layer", &layer);
+        if (layer == 3) {
+            return "audio/mp3";
+        }
+    }
+
+    return media_type;
+}
+
 static void append_stream_json(strbuf *sb, GstDiscovererStreamInfo *stream, gboolean *first) {
     GstCaps *caps = gst_discoverer_stream_info_get_caps(stream);
     if (caps == NULL) {
@@ -70,6 +103,7 @@ static void append_stream_json(strbuf *sb, GstDiscovererStreamInfo *stream, gboo
 
     const GstStructure *s = gst_caps_get_structure(caps, 0);
     const gchar *media_type = gst_structure_get_name(s);
+    const char *codec = refine_codec(s, media_type);
 
     if (!*first) {
         sb_append(sb, ",");
@@ -78,7 +112,7 @@ static void append_stream_json(strbuf *sb, GstDiscovererStreamInfo *stream, gboo
 
     sb_append(sb, "{");
     sb_append(sb, "\"codec\":\"");
-    sb_append(sb, media_type);
+    sb_append(sb, codec);
     sb_append(sb, "\"");
 
     if (GST_IS_DISCOVERER_VIDEO_INFO(stream)) {
@@ -140,13 +174,9 @@ static void collect_streams(strbuf *sb, GstDiscovererStreamInfo *info, gboolean 
 }
 
 /* GStreamer initialization touches global registry/plugin state and is
- * not safe to call concurrently. The server may receive several Inspect
- * RPCs at once (e.g. a client inspecting multiple files in parallel),
- * so a plain "if (!gst_is_initialized()) gst_init(...)" check-then-act
- * here would be a data race: multiple goroutines could all observe
- * "not initialized" and call gst_init() at the same time. pthread_once
- * guarantees the init function runs exactly once, and every concurrent
- * caller blocks until that single call completes. */
+ * not safe to call concurrently. pthread_once guarantees the init
+ * function runs exactly once, and every concurrent caller blocks
+ * until that single call completes. */
 static pthread_once_t gst_init_once = PTHREAD_ONCE_INIT;
 
 static void do_gst_init(void) {
